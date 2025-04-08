@@ -1,0 +1,269 @@
+:root {
+    --primary-color: #0d6efd;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #0dcaf0;
+    
+    /* Light theme variables */
+    --light-bg: #f8f9fa;
+    --light-sidebar-bg: #f0f0f0;
+    --light-card-bg: #ffffff;
+    --light-text: #212529;
+    --light-border: #dee2e6;
+    
+    /* Dark theme variables */
+    --dark-bg: #212529;
+    --dark-sidebar-bg: #2c3034;
+    --dark-card-bg: #343a40;
+    --dark-text: #f8f9fa;
+    --dark-border: #495057;
+}
+
+/* Global styles */
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Dark mode styles */
+body.dark-mode {
+    background-color: var(--dark-bg);
+    color: var(--dark-text);
+}
+
+body.dark-mode .card,
+body.dark-mode .table,
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: var(--dark-card-bg);
+    color: var(--dark-text);
+    border-color: var(--dark-border);
+}
+
+body.dark-mode #sidebar {
+    background-color: var(--dark-sidebar-bg);
+    border-right: 1px solid var(--dark-border);
+}
+
+body.dark-mode .nav-link {
+    color: var(--dark-text);
+}
+
+body.dark-mode .nav-link.active {
+    color: var(--primary-color);
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+body.dark-mode .table thead th {
+    border-bottom-color: var(--dark-border);
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: var(--dark-card-bg);
+    color: var(--dark-text);
+    border-color: var(--primary-color);
+}
+
+body.dark-mode .status-card {
+    background-color: var(--dark-card-bg);
+    border-color: var(--dark-border);
+}
+
+/* Light mode styles */
+body.light-mode {
+    background-color: var(--light-bg);
+    color: var(--light-text);
+}
+
+body.light-mode .card,
+body.light-mode .table {
+    background-color: var(--light-card-bg);
+    color: var(--light-text);
+    border-color: var(--light-border);
+}
+
+body.light-mode #sidebar {
+    background-color: var(--light-sidebar-bg);
+    border-right: 1px solid var(--light-border);
+}
+
+body.light-mode .nav-link {
+    color: var(--light-text);
+}
+
+body.light-mode .nav-link.active {
+    color: var(--primary-color);
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* Sidebar */
+#sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    transition: all 0.3s ease;
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.sidebar .nav-link.active {
+    font-weight: 600;
+}
+
+.sidebar .nav-link:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.sidebar .nav-link i {
+    margin-right: 8px;
+}
+
+/* Main content */
+main {
+    padding-top: 20px;
+}
+
+/* Status cards */
+.status-card {
+    border-radius: 10px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.status-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.status-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+/* Chart cards */
+.chart-card {
+    border-radius: 10px;
+    transition: transform 0.3s ease;
+    height: 100%;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Loading overlay */
+#loadingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.spinner-container {
+    text-align: center;
+}
+
+/* Dark/Light theme switch */
+.theme-switch-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 1rem 0;
+}
+
+/* Responsive styles */
+@media (max-width: 767.98px) {
+    #sidebar {
+        position: static;
+        height: auto;
+        padding-bottom: 0;
+    }
+    
+    .status-card {
+        margin-bottom: 1rem;
+    }
+    
+    .chart-container {
+        height: 250px;
+    }
+}
+
+/* Transitions and animations */
+.card, .table, .nav-link, .chart-card, .status-card {
+    transition: all 0.3s ease;
+}
+
+.tab-pane {
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+body.dark-mode ::-webkit-scrollbar-track {
+    background: #2c3034;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Table styles */
+.table th {
+    font-weight: 600;
+}
+
+body.dark-mode .table td, 
+body.dark-mode .table th {
+    border-color: var(--dark-border);
+}
+
+/* Card hover effect */
+.card:hover {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode .card:hover {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
