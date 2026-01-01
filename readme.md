@@ -50,19 +50,13 @@ bearing-fault-detection/
 
 ### 설치 방법
 
-1. 저장소 복제:
-   ```bash
-   git clone https://github.com/yourusername/bearing-fault-detection.git
-   cd bearing-fault-detection
-   ```
-
-2. 가상 환경 생성 및 활성화:
+1. 가상 환경 생성 및 활성화:
    ```bash
    python -m venv venv
    source venv/bin/activate  # Windows: venv\Scripts\activate
    ```
 
-3. 의존성 설치:
+2. 의존성 설치:
    ```bash
    pip install -r requirements.txt
    ```
