@@ -18,15 +18,20 @@ def perform_fft(signal_data, sampling_rate):
     tuple : (frequency array, frequency spectrum amplitude)
     """
     n = len(signal_data)
+    # Apply Hanning window to reduce spectral leakage
+    window = np.hanning(n)
+    windowed_signal = signal_data * window
+    # Window correction factor for amplitude normalization
+    window_correction = np.mean(window)
     # Perform FFT
-    fft_result = fft(signal_data)
+    fft_result = fft(windowed_signal)
     # Create frequency array
     freq = fftfreq(n, 1 / sampling_rate)
     # Select only positive frequencies (symmetric, so only half needed)
     half_n = n // 2
     freq = freq[:half_n]
-    # Calculate amplitude spectrum (normalize magnitude)
-    magnitude = 2.0 / n * np.abs(fft_result[:half_n])
+    # Calculate amplitude spectrum (normalize magnitude with window correction)
+    magnitude = 2.0 / (n * window_correction) * np.abs(fft_result[:half_n])
 
     return freq, magnitude
 

@@ -77,8 +77,12 @@
                             <input type="file" class="form-control" id="fileUpload" accept=".csv,.mat,.txt,.xlsx">
                         </div>
                         
-                        <button id="btnAnalyze" class="btn btn-success w-100" disabled>
+                        <button id="btnAnalyze" class="btn btn-success w-100 mb-2" disabled>
                             <i class="bi bi-play me-2"></i>Analyze Data
+                        </button>
+
+                        <button class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#generateSampleModal">
+                            <i class="bi bi-lightning me-2"></i>Generate Custom Data
                         </button>
                     </div>
                 </div>
@@ -464,6 +468,51 @@
         </div>
     </div>
     
+    <!-- Generate Sample Data Modal -->
+    <div class="modal fade" id="generateSampleModal" tabindex="-1" aria-labelledby="generateSampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="generateSampleModalLabel">Generate Custom Sample Data</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="sampleFaultType" class="form-label">Fault Type</label>
+                        <select class="form-select" id="sampleFaultType">
+                            <option value="all">All Types</option>
+                            <option value="normal">Normal</option>
+                            <option value="outer_fault">Outer Race Fault</option>
+                            <option value="inner_fault">Inner Race Fault</option>
+                            <option value="ball_fault">Ball Fault</option>
+                            <option value="cage_fault">Cage Fault</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sampleRPM" class="form-label">RPM</label>
+                        <input type="number" class="form-control" id="sampleRPM" value="1800" min="100" max="10000">
+                    </div>
+                    <div class="mb-3">
+                        <label for="sampleSamplingRate" class="form-label">Sampling Rate (Hz)</label>
+                        <input type="number" class="form-control" id="sampleSamplingRate" value="12000" min="1000" max="100000">
+                    </div>
+                    <div class="mb-3">
+                        <label for="sampleDataLength" class="form-label">Data Length (samples)</label>
+                        <input type="number" class="form-control" id="sampleDataLength" value="10000" min="1000" max="100000">
+                    </div>
+                    <div class="mb-3">
+                        <label for="sampleNoiseLevel" class="form-label">Noise Level: <span id="noiseLevelValue">0.5</span></label>
+                        <input type="range" class="form-range" id="sampleNoiseLevel" min="0" max="1" step="0.1" value="0.5">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btnGenerateSampleData">Generate</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading Spinner -->
     <div id="loadingOverlay" class="d-none">
         <div class="spinner-container">

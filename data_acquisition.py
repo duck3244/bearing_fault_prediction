@@ -1,30 +1,4 @@
 import numpy as np
-import requests
-from io import BytesIO
-import zipfile
-
-
-def download_cwru_dataset():
-    """
-    Download the CWRU bearing dataset
-
-    Returns:
-    --------
-    bool : Success or failure of download
-    """
-    print("Downloading CWRU bearing dataset...")
-    url = "https://engineering.case.edu/sites/default/files/drive_end_2hp.zip"
-    try:
-        response = requests.get(url)
-        zip_file = BytesIO(response.content)
-        with zipfile.ZipFile(zip_file, 'r') as z:
-            z.extractall('cwru_data')
-        print("Dataset download completed")
-        return True
-    except Exception as e:
-        print(f"Dataset download failed: {e}")
-        print("Generating sample data instead")
-        return False
 
 
 def create_sample_data(num_samples=10000, sampling_rate=12000, rpm=1800, fault_type='all', noise_level=0.5):

@@ -1,131 +1,4 @@
-// Load sample data from API
-async function loadSampleData() {
-    showLoading();
-
-    try {
-        const rpm = document.getElementById('rpmInput').value || 1800;
-        const response = await fetch(`/api/sample-data?rpm=${rpm}`);
-
-        if (!response.ok) {
-            throw new Error('Failed to load sample data');
-        }
-
-        const data = await response.json();
-        currentData = data;
-
-        // Get available signal types and update dropdown
-        const availableTypes = Object.keys(data.features);
-        updateSignalTypeDropdown(availableTypes);
-
-        // Update signal type from dropdown
-        currentSignalType = signalSelect.value;
-
-        // If current selection is not available, select the first available type
-        if (!availableTypes.includes(currentSignalType) && availableTypes.length > 0) {
-            currentSignalType = availableTypes[0];
-            signalSelect.value = currentSignalType;
-        }
-
-        // Update UI with data
-        updateUIWithData();
-
-        // Enable analyze button
-        btnAnalyze.disabled = false;
-
-    } catch (error) {
-        console.error('Error loading sample data:', error);
-        alert('Error loading sample data. Please try again.');
-    } finally {
-        hideLoading();
-    }
-}// Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize theme
-    initTheme();
-
-    // Dark mode toggle
-    darkModeSwitch.addEventListener('change', toggleTheme);
-
-    // Load sample data button
-    btnLoadSample.addEventListener('click', loadSampleData);
-
-    // Generate custom sample data button
-    document.getElementById('btnGenerateSampleData').addEventListener('click', generateSampleData);
-
-    // Update noise level display
-    document.getElementById('sampleNoiseLevel').addEventListener('input', updateNoiseLevel);
-
-    // Signal type change
-    signalSelect.addEventListener('change', function() {
-        if (currentData && currentData.features) {
-            currentSignalType = this.value;
-            updateUIWithData();
-        }
-    });
-
-    // File upload
-    fileUpload.addEventListener('change', function() {
-        if (this.files && this.files.length > 0) {
-            btnAnalyze.disabled = false;
-        } else {
-            btnAnalyze.disabled = true;
-        }
-    });
-
-    // Analyze button
-    btnAnalyze.addEventListener('click', analyzeUploadedData);
-
-    // Export data button
-    document.getElementById('btnExportData').addEventListener('click', exportData);
-
-    // Export charts button
-    document.getElementById('btnExportCharts').addEventListener('click', function() {
-        alert('This feature is not implemented in this demo.');
-    });
-
-    // Bearing parameters form
-    bearingParamsForm.addEventListener('submit', updateBearingParams);
-
-    // Visualization settings form
-    vizSettingsForm.addEventListener('submit', updateVizSettings);
-});// Export data as CSV
-function exportData() {
-    if (!currentData) {
-        alert('No data available to export.');
-        return;
-    }
-
-    try {
-        const features = currentData.features[currentSignalType];
-
-        // Combine time and frequency features
-        const allFeatures = {
-            ...features.time_features,
-            ...features.freq_features
-        };
-
-        // Convert to CSV
-        let csv = 'Feature,Value\n';
-        Object.keys(allFeatures).forEach(feature => {
-            csv += `${feature},${allFeatures[feature]}\n`;
-        });
-
-        // Create download link
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `bearing_features_${currentSignalType}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-    } catch (error) {
-        console.error('Error exporting data:', error);
-        alert('Error exporting data. Please try again.');
-    }
-}// Global variables
+// Global variables
 let currentData = null;
 let currentSignalType = 'normal';
 let charts = {};
@@ -252,8 +125,18 @@ async function loadSampleData() {
         const data = await response.json();
         currentData = data;
 
+        // Get available signal types and update dropdown
+        const availableTypes = Object.keys(data.features);
+        updateSignalTypeDropdown(availableTypes);
+
         // Update signal type from dropdown
         currentSignalType = signalSelect.value;
+
+        // If current selection is not available, select the first available type
+        if (!availableTypes.includes(currentSignalType) && availableTypes.length > 0) {
+            currentSignalType = availableTypes[0];
+            signalSelect.value = currentSignalType;
+        }
 
         // Update UI with data
         updateUIWithData();
@@ -282,7 +165,7 @@ async function analyzeUploadedData() {
         const formData = new FormData();
         formData.append('file', fileUpload.files[0]);
         formData.append('rpm', document.getElementById('rpmInput').value || 1800);
-        formData.append('sampling_rate', 12000); // Default value, can be changed
+        formData.append('sampling_rate', 12000);
 
         const response = await fetch('/api/analyze', {
             method: 'POST',
@@ -296,19 +179,25 @@ async function analyzeUploadedData() {
         const data = await response.json();
 
         // Create structure similar to sample data
+        const uploadedFeatures = {
+            signal_sample: data.signal_sample,
+            time_features: data.time_features,
+            freq_features: data.freq_features,
+            fault_detection: data.fault_detection,
+            freq_sample: data.freq_sample,
+            magnitude_sample: data.magnitude_sample
+        };
+
+        if (data.prediction) {
+            uploadedFeatures.prediction = data.prediction;
+        }
+
         currentData = {
             fault_frequencies: data.fault_frequencies,
             rpm: data.rpm || 1800,
             sampling_rate: data.sampling_rate || 12000,
             features: {
-                uploaded: {
-                    signal_sample: data.signal_sample,
-                    time_features: data.time_features,
-                    freq_features: data.freq_features,
-                    fault_detection: data.fault_detection,
-                    freq_sample: data.freq_sample,
-                    magnitude_sample: data.magnitude_sample
-                }
+                uploaded: uploadedFeatures
             }
         };
 
@@ -335,7 +224,6 @@ function updateUIWithData() {
 
     // Check if currentSignalType exists in the data
     if (!currentData.features[currentSignalType]) {
-        // If not, use the first available signal type
         const availableTypes = Object.keys(currentData.features);
         if (availableTypes.length === 0) {
             console.error('No signal types available in the data');
@@ -343,7 +231,6 @@ function updateUIWithData() {
         }
         currentSignalType = availableTypes[0];
 
-        // Update dropdown
         if (signalSelect.value !== currentSignalType) {
             signalSelect.value = currentSignalType;
         }
@@ -352,16 +239,22 @@ function updateUIWithData() {
     const features = currentData.features[currentSignalType];
 
     // Update status cards
-    document.getElementById('signalStatus').textContent = currentSignalType.replace('_', ' ').toUpperCase();
+    document.getElementById('signalStatus').textContent = currentSignalType.replaceAll('_', ' ').toUpperCase();
     document.getElementById('rpmStatus').textContent = currentData.rpm + ' RPM';
 
-    // Update fault status (simple example - could be more sophisticated)
-    const hasFault = currentSignalType !== 'normal';
-    document.getElementById('faultStatus').textContent = hasFault ? 'YES' : 'NO';
-    document.getElementById('faultStatus').style.color = hasFault ? 'var(--danger-color)' : 'var(--success-color)';
-
-    // Update confidence (placeholder)
-    document.getElementById('confidenceStatus').textContent = hasFault ? '85%' : 'N/A';
+    // Update fault status and confidence from ML prediction
+    if (features.prediction) {
+        const pred = features.prediction;
+        const hasFault = pred.label !== 'normal';
+        document.getElementById('faultStatus').textContent = hasFault ? pred.label.replaceAll('_', ' ').toUpperCase() : 'NO';
+        document.getElementById('faultStatus').style.color = hasFault ? 'var(--danger-color)' : 'var(--success-color)';
+        document.getElementById('confidenceStatus').textContent = (pred.confidence * 100).toFixed(1) + '%';
+    } else {
+        const hasFault = currentSignalType !== 'normal';
+        document.getElementById('faultStatus').textContent = hasFault ? 'YES' : 'NO';
+        document.getElementById('faultStatus').style.color = hasFault ? 'var(--danger-color)' : 'var(--success-color)';
+        document.getElementById('confidenceStatus').textContent = 'N/A';
+    }
 
     // Update charts
     updateTimeSignalChart(features.signal_sample);
@@ -387,8 +280,6 @@ function updateUIWithData() {
 // Time Signal Chart
 function updateTimeSignalChart(signalData) {
     const ctx = document.getElementById('timeSignalChart').getContext('2d');
-
-    // Generate time array
     const timeArray = Array.from({length: signalData.length}, (_, i) => i / 1000);
 
     if (charts.timeSignal) {
@@ -411,27 +302,19 @@ function updateTimeSignalChart(signalData) {
         options: {
             scales: {
                 x: {
-                    title: {
-                        display: true,
-                        text: 'Time (s)'
-                    }
+                    title: { display: true, text: 'Time (s)' }
                 },
                 y: {
-                    title: {
-                        display: true,
-                        text: 'Amplitude'
-                    }
+                    title: { display: true, text: 'Amplitude' }
                 }
             },
             plugins: {
                 title: {
                     display: true,
-                    text: `${currentSignalType.replace('_', ' ').toUpperCase()} - Time Domain Signal`
+                    text: `${currentSignalType.replaceAll('_', ' ').toUpperCase()} - Time Domain Signal`
                 }
             },
-            animation: {
-                duration: 1000
-            }
+            animation: { duration: 1000 }
         }
     });
 }
@@ -460,27 +343,19 @@ function updateFreqSpectrumChart(freqData, magnitudeData) {
         options: {
             scales: {
                 x: {
-                    title: {
-                        display: true,
-                        text: 'Frequency (Hz)'
-                    }
+                    title: { display: true, text: 'Frequency (Hz)' }
                 },
                 y: {
-                    title: {
-                        display: true,
-                        text: 'Magnitude'
-                    }
+                    title: { display: true, text: 'Magnitude' }
                 }
             },
             plugins: {
                 title: {
                     display: true,
-                    text: `${currentSignalType.replace('_', ' ').toUpperCase()} - Frequency Spectrum`
+                    text: `${currentSignalType.replaceAll('_', ' ').toUpperCase()} - Frequency Spectrum`
                 }
             },
-            animation: {
-                duration: 1000
-            }
+            animation: { duration: 1000 }
         }
     });
 }
@@ -489,9 +364,8 @@ function updateFreqSpectrumChart(freqData, magnitudeData) {
 function updateTimeFeatureChart(timeFeatures) {
     const ctx = document.getElementById('timeFeatureChart').getContext('2d');
 
-    // Select key features to display
     const selectedFeatures = ['rms', 'kurtosis', 'crest_factor', 'impulse_factor'];
-    const featureLabels = selectedFeatures.map(f => f.replace('_', ' ').toUpperCase());
+    const featureLabels = selectedFeatures.map(f => f.replaceAll('_', ' ').toUpperCase());
     const featureValues = selectedFeatures.map(f => timeFeatures[f]);
 
     if (charts.timeFeature) {
@@ -514,21 +388,13 @@ function updateTimeFeatureChart(timeFeatures) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Value'
-                    }
+                    title: { display: true, text: 'Value' }
                 }
             },
             plugins: {
-                title: {
-                    display: true,
-                    text: 'Key Time Domain Features'
-                }
+                title: { display: true, text: 'Key Time Domain Features' }
             },
-            animation: {
-                duration: 1000
-            }
+            animation: { duration: 1000 }
         }
     });
 }
@@ -537,9 +403,8 @@ function updateTimeFeatureChart(timeFeatures) {
 function updateFreqFeatureChart(freqFeatures) {
     const ctx = document.getElementById('freqFeatureChart').getContext('2d');
 
-    // Select key features to display
     const selectedFeatures = ['max_magnitude', 'spectral_centroid', 'low_freq_energy_ratio'];
-    const featureLabels = selectedFeatures.map(f => f.replace('_', ' ').toUpperCase());
+    const featureLabels = selectedFeatures.map(f => f.replaceAll('_', ' ').toUpperCase());
     const featureValues = selectedFeatures.map(f => freqFeatures[f]);
 
     if (charts.freqFeature) {
@@ -562,21 +427,13 @@ function updateFreqFeatureChart(freqFeatures) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Value'
-                    }
+                    title: { display: true, text: 'Value' }
                 }
             },
             plugins: {
-                title: {
-                    display: true,
-                    text: 'Key Frequency Domain Features'
-                }
+                title: { display: true, text: 'Key Frequency Domain Features' }
             },
-            animation: {
-                duration: 1000
-            }
+            animation: { duration: 1000 }
         }
     });
 }
@@ -584,8 +441,6 @@ function updateFreqFeatureChart(freqFeatures) {
 // Raw Signal Chart (Time Domain Tab)
 function updateRawSignalChart(signalData) {
     const ctx = document.getElementById('rawSignalChart').getContext('2d');
-
-    // Generate time array
     const timeArray = Array.from({length: signalData.length}, (_, i) => i / 1000);
 
     if (charts.rawSignal) {
@@ -608,38 +463,23 @@ function updateRawSignalChart(signalData) {
         options: {
             scales: {
                 x: {
-                    title: {
-                        display: true,
-                        text: 'Time (s)'
-                    }
+                    title: { display: true, text: 'Time (s)' }
                 },
                 y: {
-                    title: {
-                        display: true,
-                        text: 'Amplitude'
-                    }
+                    title: { display: true, text: 'Amplitude' }
                 }
             },
             plugins: {
-                title: {
-                    display: true,
-                    text: 'Full Time Domain Signal'
-                },
+                title: { display: true, text: 'Full Time Domain Signal' },
                 zoom: {
                     zoom: {
-                        wheel: {
-                            enabled: true,
-                        },
-                        pinch: {
-                            enabled: true
-                        },
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
                         mode: 'xy',
                     }
                 }
             },
-            animation: {
-                duration: 1000
-            }
+            animation: { duration: 1000 }
         }
     });
 }
@@ -668,27 +508,16 @@ function updateFullSpectrumChart(freqData, magnitudeData) {
         options: {
             scales: {
                 x: {
-                    title: {
-                        display: true,
-                        text: 'Frequency (Hz)'
-                    }
+                    title: { display: true, text: 'Frequency (Hz)' }
                 },
                 y: {
-                    title: {
-                        display: true,
-                        text: 'Magnitude'
-                    }
+                    title: { display: true, text: 'Magnitude' }
                 }
             },
             plugins: {
-                title: {
-                    display: true,
-                    text: 'Full Frequency Spectrum'
-                }
+                title: { display: true, text: 'Full Frequency Spectrum' }
             },
-            animation: {
-                duration: 1000
-            }
+            animation: { duration: 1000 }
         }
     });
 }
@@ -697,7 +526,6 @@ function updateFullSpectrumChart(freqData, magnitudeData) {
 function updateLowFreqChart(freqData, magnitudeData) {
     const ctx = document.getElementById('lowFreqChart').getContext('2d');
 
-    // Filter data for low frequencies (0-200 Hz)
     const lowFreqThreshold = 200;
     const lowFreqData = freqData.filter(freq => freq <= lowFreqThreshold);
     const lowFreqIndices = freqData.map((freq, index) => freq <= lowFreqThreshold ? index : -1).filter(idx => idx !== -1);
@@ -723,27 +551,16 @@ function updateLowFreqChart(freqData, magnitudeData) {
         options: {
             scales: {
                 x: {
-                    title: {
-                        display: true,
-                        text: 'Frequency (Hz)'
-                    }
+                    title: { display: true, text: 'Frequency (Hz)' }
                 },
                 y: {
-                    title: {
-                        display: true,
-                        text: 'Magnitude'
-                    }
+                    title: { display: true, text: 'Magnitude' }
                 }
             },
             plugins: {
-                title: {
-                    display: true,
-                    text: 'Low Frequency Range (0-200Hz)'
-                }
+                title: { display: true, text: 'Low Frequency Range (0-200Hz)' }
             },
-            animation: {
-                duration: 1000
-            }
+            animation: { duration: 1000 }
         }
     });
 }
@@ -752,11 +569,9 @@ function updateLowFreqChart(freqData, magnitudeData) {
 function updateTimeFeatureRadarChart(timeFeatures) {
     const ctx = document.getElementById('timeFeatureRadarChart').getContext('2d');
 
-    // Normalize features for radar chart
     const selectedFeatures = ['rms', 'kurtosis', 'crest_factor', 'impulse_factor', 'shape_factor', 'peak'];
-    const featureLabels = selectedFeatures.map(f => f.replace('_', ' ').toUpperCase());
+    const featureLabels = selectedFeatures.map(f => f.replaceAll('_', ' ').toUpperCase());
 
-    // Normalize values between 0 and 1 for better radar visualization
     const maxValues = {
         rms: 2,
         kurtosis: 10,
@@ -780,7 +595,7 @@ function updateTimeFeatureRadarChart(timeFeatures) {
         data: {
             labels: featureLabels,
             datasets: [{
-                label: currentSignalType.replace('_', ' ').toUpperCase(),
+                label: currentSignalType.replaceAll('_', ' ').toUpperCase(),
                 data: normalizedValues,
                 backgroundColor: 'rgba(54, 162, 235, 0.2)',
                 borderColor: 'rgba(54, 162, 235, 1)',
@@ -796,10 +611,7 @@ function updateTimeFeatureRadarChart(timeFeatures) {
                 }
             },
             plugins: {
-                title: {
-                    display: true,
-                    text: 'Time Domain Feature Patterns'
-                },
+                title: { display: true, text: 'Time Domain Feature Patterns' },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -810,9 +622,7 @@ function updateTimeFeatureRadarChart(timeFeatures) {
                     }
                 }
             },
-            animation: {
-                duration: 1000
-            }
+            animation: { duration: 1000 }
         }
     });
 }
@@ -821,36 +631,40 @@ function updateTimeFeatureRadarChart(timeFeatures) {
 function updateFaultSeverityChart(features) {
     const ctx = document.getElementById('faultSeverityChart').getContext('2d');
 
-    // Calculate fault severity indicators based on time and frequency features
-    // This is a simplified example - real calculations would be more sophisticated
     const faultTypes = ['Normal', 'Outer Race', 'Inner Race', 'Ball', 'Cage'];
+    let severityScores;
 
-    // Simplified severity calculation - just for demonstration
-    let severityScores = [0, 0, 0, 0, 0];
-
-    // Set severity based on current signal type
-    if (currentSignalType === 'normal') {
-        severityScores[0] = 0.9;
-    } else if (currentSignalType === 'outer_fault') {
-        severityScores[1] = 0.8;
-    } else if (currentSignalType === 'inner_fault') {
-        severityScores[2] = 0.7;
-    } else if (currentSignalType === 'ball_fault') {
-        severityScores[3] = 0.75;
-    } else if (currentSignalType === 'cage_fault') {
-        severityScores[4] = 0.6;
+    // Use ML prediction probabilities if available
+    if (features.prediction && features.prediction.probabilities) {
+        const probs = features.prediction.probabilities;
+        severityScores = [
+            probs['normal'] || 0,
+            probs['outer_fault'] || 0,
+            probs['inner_fault'] || 0,
+            probs['ball_fault'] || 0,
+            probs['cage_fault'] || 0
+        ];
     } else {
-        // For uploaded data, estimate based on features (simplified)
-        const kurtosis = features.time_features.kurtosis;
-        if (kurtosis > 5) {
-            // High kurtosis often indicates inner race faults
-            severityScores[2] = 0.6;
-        } else if (features.time_features.crest_factor > 4) {
-            // High crest factor can indicate outer race faults
-            severityScores[1] = 0.5;
+        severityScores = [0, 0, 0, 0, 0];
+        if (currentSignalType === 'normal') {
+            severityScores[0] = 0.9;
+        } else if (currentSignalType === 'outer_fault') {
+            severityScores[1] = 0.8;
+        } else if (currentSignalType === 'inner_fault') {
+            severityScores[2] = 0.7;
+        } else if (currentSignalType === 'ball_fault') {
+            severityScores[3] = 0.75;
+        } else if (currentSignalType === 'cage_fault') {
+            severityScores[4] = 0.6;
         } else {
-            // Default to normal
-            severityScores[0] = 0.4;
+            const kurtosis = features.time_features.kurtosis;
+            if (kurtosis > 5) {
+                severityScores[2] = 0.6;
+            } else if (features.time_features.crest_factor > 4) {
+                severityScores[1] = 0.5;
+            } else {
+                severityScores[0] = 0.4;
+            }
         }
     }
 
@@ -863,7 +677,7 @@ function updateFaultSeverityChart(features) {
         data: {
             labels: faultTypes,
             datasets: [{
-                label: 'Severity Score',
+                label: 'Probability',
                 data: severityScores,
                 backgroundColor: [
                     'rgba(75, 192, 192, 0.5)',
@@ -887,21 +701,13 @@ function updateFaultSeverityChart(features) {
                 y: {
                     beginAtZero: true,
                     max: 1,
-                    title: {
-                        display: true,
-                        text: 'Severity (0-1)'
-                    }
+                    title: { display: true, text: 'Probability (0-1)' }
                 }
             },
             plugins: {
-                title: {
-                    display: true,
-                    text: 'Fault Type Probability'
-                }
+                title: { display: true, text: 'Fault Type Probability' }
             },
-            animation: {
-                duration: 1000
-            }
+            animation: { duration: 1000 }
         }
     });
 }
@@ -910,37 +716,26 @@ function updateFaultSeverityChart(features) {
 function updateFaultComparisonChart() {
     const ctx = document.getElementById('faultComparisonChart').getContext('2d');
 
-    // For comparison we need data from multiple fault types
-    // If we only have data for current signal type, create synthetic comparison data
-    // In real application, this would compare actual data from multiple signal types
-
     if (!currentData || !currentData.features) {
         return;
     }
 
-    // Select key features for comparison
     const comparisonFeatures = ['rms', 'kurtosis', 'crest_factor'];
-    const labels = comparisonFeatures.map(f => f.replace('_', ' ').toUpperCase());
+    const labels = comparisonFeatures.map(f => f.replaceAll('_', ' ').toUpperCase());
 
-    // Create datasets for each fault type (with synthetic data if needed)
     const datasets = [];
-
-    // Get colors for different fault types
     const colors = chartColors.default.backgroundColor;
     const borderColors = chartColors.default.borderColor;
 
-    // Current signal data (real data)
     const currentFeatures = currentData.features[currentSignalType].time_features;
     datasets.push({
-        label: currentSignalType.replace('_', ' ').toUpperCase(),
+        label: currentSignalType.replaceAll('_', ' ').toUpperCase(),
         data: comparisonFeatures.map(f => currentFeatures[f]),
         backgroundColor: colors[0],
         borderColor: borderColors[0],
         borderWidth: 1
     });
 
-    // Add synthetic comparison data for demonstration
-    // In a real application, you would use actual data from different fault types
     const syntheticMultipliers = {
         'normal': [0.8, 0.3, 0.7],
         'outer_fault': [1.2, 1.5, 1.3],
@@ -950,15 +745,12 @@ function updateFaultComparisonChart() {
     };
 
     const signalTypes = Object.keys(syntheticMultipliers);
-
-    // Filter out current signal type to avoid duplication
     const comparisonTypes = signalTypes.filter(type => type !== currentSignalType);
 
-    // Add selected comparison types
     comparisonTypes.slice(0, 2).forEach((type, idx) => {
         const multipliers = syntheticMultipliers[type];
         datasets.push({
-            label: type.replace('_', ' ').toUpperCase(),
+            label: type.replaceAll('_', ' ').toUpperCase(),
             data: comparisonFeatures.map((f, i) => currentFeatures[f] * multipliers[i]),
             backgroundColor: colors[idx + 1],
             borderColor: borderColors[idx + 1],
@@ -978,19 +770,12 @@ function updateFaultComparisonChart() {
         },
         options: {
             elements: {
-                line: {
-                    tension: 0.2
-                }
+                line: { tension: 0.2 }
             },
             plugins: {
-                title: {
-                    display: true,
-                    text: 'Feature Comparison Across Fault Types'
-                }
+                title: { display: true, text: 'Feature Comparison Across Fault Types' }
             },
-            animation: {
-                duration: 1000
-            }
+            animation: { duration: 1000 }
         }
     });
 }
@@ -1001,14 +786,13 @@ function updateTimeFeatureTable(timeFeatures) {
     const tbody = table.querySelector('tbody');
     tbody.innerHTML = '';
 
-    // Sort features alphabetically
     const sortedFeatures = Object.keys(timeFeatures).sort();
 
     sortedFeatures.forEach(feature => {
         const row = document.createElement('tr');
 
         const nameCell = document.createElement('td');
-        nameCell.textContent = feature.replace('_', ' ').toUpperCase();
+        nameCell.textContent = feature.replaceAll('_', ' ').toUpperCase();
 
         const valueCell = document.createElement('td');
         const value = timeFeatures[feature];
@@ -1030,7 +814,6 @@ function updateFreqFeatureTable(freqFeatures) {
     const tbody = table.querySelector('tbody');
     tbody.innerHTML = '';
 
-    // Filter out fault energy features for separate display
     const generalFeatures = {};
     const faultEnergyFeatures = {};
 
@@ -1042,13 +825,12 @@ function updateFreqFeatureTable(freqFeatures) {
         }
     });
 
-    // Add general features
     const sortedGeneralFeatures = Object.keys(generalFeatures).sort();
     sortedGeneralFeatures.forEach(feature => {
         const row = document.createElement('tr');
 
         const nameCell = document.createElement('td');
-        nameCell.textContent = feature.replace('_', ' ').toUpperCase();
+        nameCell.textContent = feature.replaceAll('_', ' ').toUpperCase();
 
         const valueCell = document.createElement('td');
         const value = generalFeatures[feature];
@@ -1063,9 +845,7 @@ function updateFreqFeatureTable(freqFeatures) {
         tbody.appendChild(row);
     });
 
-    // Add fault energy features
     if (Object.keys(faultEnergyFeatures).length > 0) {
-        // Add separator
         const separatorRow = document.createElement('tr');
         const separatorCell = document.createElement('td');
         separatorCell.colSpan = 2;
@@ -1075,13 +855,12 @@ function updateFreqFeatureTable(freqFeatures) {
         separatorRow.appendChild(separatorCell);
         tbody.appendChild(separatorRow);
 
-        // Sort and add fault energy features
         const sortedFaultFeatures = Object.keys(faultEnergyFeatures).sort();
         sortedFaultFeatures.forEach(feature => {
             const row = document.createElement('tr');
 
             const nameCell = document.createElement('td');
-            nameCell.textContent = feature.replace('_', ' ').toUpperCase();
+            nameCell.textContent = feature.replaceAll('_', ' ').toUpperCase();
 
             const valueCell = document.createElement('td');
             const value = faultEnergyFeatures[feature];
@@ -1200,12 +979,9 @@ async function updateBearingParams(event) {
 
         const data = await response.json();
 
-        // Update current data with new fault frequencies
         if (currentData) {
             currentData.fault_frequencies = data.fault_frequencies;
             updateFaultFreqTable(data.fault_frequencies);
-
-            // Alert user of success
             alert('Bearing parameters updated successfully.');
         }
 
@@ -1219,19 +995,15 @@ async function updateBearingParams(event) {
 function updateVizSettings(event) {
     event.preventDefault();
 
-    // Get settings
     const colorScheme = document.getElementById('chartColorsSelect').value;
     const showGridLines = document.getElementById('showGridLines').checked;
     const showTooltips = document.getElementById('showTooltips').checked;
     const animateCharts = document.getElementById('animateCharts').checked;
 
-    // Update chart defaults
     Chart.defaults.animation.duration = animateCharts ? 1000 : 0;
 
-    // Update all charts with new settings
     Object.values(charts).forEach(chart => {
         if (chart && chart.options) {
-            // Update grid lines
             if (chart.options.scales && chart.options.scales.x) {
                 chart.options.scales.x.grid.display = showGridLines;
             }
@@ -1240,7 +1012,6 @@ function updateVizSettings(event) {
                 chart.options.scales.y.grid.display = showGridLines;
             }
 
-            // Update tooltips
             if (chart.options.plugins && chart.options.plugins.tooltip) {
                 chart.options.plugins.tooltip.enabled = showTooltips;
             }
@@ -1249,20 +1020,17 @@ function updateVizSettings(event) {
         }
     });
 
-    // Alert user of success
     alert('Visualization settings updated successfully.');
 }
 
 // Generate custom sample data
 async function generateSampleData() {
-    // Get values from form
     const faultType = document.getElementById('sampleFaultType').value;
     const rpm = parseFloat(document.getElementById('sampleRPM').value);
     const samplingRate = parseInt(document.getElementById('sampleSamplingRate').value);
     const dataLength = parseInt(document.getElementById('sampleDataLength').value);
     const noiseLevel = parseFloat(document.getElementById('sampleNoiseLevel').value);
 
-    // Validate inputs
     if (isNaN(rpm) || rpm <= 0) {
         alert('Please enter a valid RPM value.');
         return;
@@ -1283,7 +1051,6 @@ async function generateSampleData() {
         return;
     }
 
-    // Hide modal
     const modal = bootstrap.Modal.getInstance(document.getElementById('generateSampleModal'));
     modal.hide();
 
@@ -1311,28 +1078,16 @@ async function generateSampleData() {
         const data = await response.json();
         currentData = data;
 
-        // Update signal type based on fault type selection
         if (faultType === 'all') {
-            // If all types are generated, use the one selected in the dropdown
             currentSignalType = signalSelect.value;
-
-            // Make sure the dropdown only shows available signal types
             updateSignalTypeDropdown(Object.keys(data.features));
         } else {
-            // Otherwise use the specific fault type
             currentSignalType = faultType;
-
-            // Update dropdown with available types
             updateSignalTypeDropdown(Object.keys(data.features));
-
-            // Select the current signal type in the dropdown
             signalSelect.value = currentSignalType;
         }
 
-        // Update UI with data
         updateUIWithData();
-
-        // Enable analyze button
         btnAnalyze.disabled = false;
 
     } catch (error) {
@@ -1345,10 +1100,8 @@ async function generateSampleData() {
 
 // Update signal type dropdown with available options
 function updateSignalTypeDropdown(availableTypes) {
-    // Clear current options
     signalSelect.innerHTML = '';
 
-    // Default signal types and labels
     const signalTypeLabels = {
         'normal': 'Normal',
         'outer_fault': 'Outer Race Fault',
@@ -1358,11 +1111,10 @@ function updateSignalTypeDropdown(availableTypes) {
         'uploaded': 'Uploaded Data'
     };
 
-    // Add options for available types
     availableTypes.forEach(type => {
         const option = document.createElement('option');
         option.value = type;
-        option.textContent = signalTypeLabels[type] || type.replace('_', ' ').toUpperCase();
+        option.textContent = signalTypeLabels[type] || type.replaceAll('_', ' ').toUpperCase();
         signalSelect.appendChild(option);
     });
 }
@@ -1371,6 +1123,134 @@ function updateSignalTypeDropdown(availableTypes) {
 function updateNoiseLevel() {
     const noiseLevel = document.getElementById('sampleNoiseLevel').value;
     document.getElementById('noiseLevelValue').textContent = noiseLevel;
+}
+
+// Export data as CSV
+function exportData() {
+    if (!currentData) {
+        alert('No data available to export.');
+        return;
+    }
+
+    try {
+        const features = currentData.features[currentSignalType];
+
+        const allFeatures = {
+            ...features.time_features,
+            ...features.freq_features
+        };
+
+        let csv = 'Feature,Value\n';
+        Object.keys(allFeatures).forEach(feature => {
+            csv += `${feature},${allFeatures[feature]}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `bearing_features_${currentSignalType}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (error) {
+        console.error('Error exporting data:', error);
+        alert('Error exporting data. Please try again.');
+    }
+}
+
+// Export all charts as PNG images
+async function exportCharts() {
+    const activeCharts = Object.entries(charts).filter(([_, chart]) => chart != null && chart.canvas);
+
+    if (activeCharts.length === 0) {
+        alert('No charts available to export. Please load data first.');
+        return;
+    }
+
+    try {
+        const chartNames = {
+            timeSignal: 'Time Signal',
+            freqSpectrum: 'Frequency Spectrum',
+            timeFeature: 'Time Domain Features',
+            freqFeature: 'Frequency Domain Features',
+            rawSignal: 'Raw Signal',
+            fullSpectrum: 'Full Spectrum',
+            lowFreq: 'Low Frequency',
+            timeFeatureRadar: 'Time Feature Radar',
+            faultSeverity: 'Fault Severity',
+            faultComparison: 'Fault Comparison'
+        };
+
+        // Filter to only charts with valid canvas dimensions
+        const validCharts = activeCharts.filter(([_, chart]) => {
+            const c = chart.canvas;
+            return c && c.width > 0 && c.height > 0;
+        });
+
+        if (validCharts.length === 0) {
+            alert('No visible charts to export. Please load data first.');
+            return;
+        }
+
+        const padding = 20;
+        const cols = 2;
+        const rows = Math.ceil(validCharts.length / cols);
+        const cellWidth = 600;
+        const cellHeight = 400;
+        const titleHeight = 30;
+        const totalWidth = cols * cellWidth + (cols + 1) * padding;
+        const totalHeight = rows * (cellHeight + titleHeight) + (rows + 1) * padding;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = totalWidth;
+        canvas.height = totalHeight;
+        const ctx = canvas.getContext('2d');
+
+        const isDark = document.body.classList.contains('dark-mode');
+        ctx.fillStyle = isDark ? '#1a1a2e' : '#ffffff';
+        ctx.fillRect(0, 0, totalWidth, totalHeight);
+
+        // Load all chart images first, then draw
+        const loadImage = (src) => new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = src;
+        });
+
+        const images = await Promise.all(
+            validCharts.map(([_, chart]) => loadImage(chart.toBase64Image()))
+        );
+
+        validCharts.forEach(([key, _], index) => {
+            const col = index % cols;
+            const row = Math.floor(index / cols);
+            const x = padding + col * (cellWidth + padding);
+            const y = padding + row * (cellHeight + titleHeight + padding);
+
+            ctx.fillStyle = isDark ? '#f8f9fa' : '#212529';
+            ctx.font = 'bold 14px system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(chartNames[key] || key, x + cellWidth / 2, y + 18);
+
+            ctx.drawImage(images[index], x, y + titleHeight, cellWidth, cellHeight);
+        });
+
+        const link = document.createElement('a');
+        link.download = `bearing_charts_${currentSignalType}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (error) {
+        console.error('Error exporting charts:', error);
+        alert('Error exporting charts. Please try again.');
+    }
 }
 
 // Event Listeners
@@ -1383,6 +1263,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load sample data button
     btnLoadSample.addEventListener('click', loadSampleData);
+
+    // Generate custom sample data button
+    document.getElementById('btnGenerateSampleData').addEventListener('click', generateSampleData);
+
+    // Update noise level display
+    document.getElementById('sampleNoiseLevel').addEventListener('input', updateNoiseLevel);
 
     // Signal type change
     signalSelect.addEventListener('change', function() {
@@ -1408,9 +1294,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btnExportData').addEventListener('click', exportData);
 
     // Export charts button
-    document.getElementById('btnExportCharts').addEventListener('click', function() {
-        alert('This feature is not implemented in this demo.');
-    });
+    document.getElementById('btnExportCharts').addEventListener('click', exportCharts);
 
     // Bearing parameters form
     bearingParamsForm.addEventListener('submit', updateBearingParams);

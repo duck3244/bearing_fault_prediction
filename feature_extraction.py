@@ -30,14 +30,18 @@ def extract_time_domain_features(signal_data):
     # Crest Factor - peak/RMS
     crest_factor = peak / rms if rms > 0 else 0
     
+    # Cache repeated calculations
+    mean_abs = np.mean(np.abs(signal_data))
+    mean_sqrt_abs = np.mean(np.sqrt(np.abs(signal_data)))
+
     # Impulse Factor
-    impulse_factor = peak / np.mean(np.abs(signal_data)) if np.mean(np.abs(signal_data)) > 0 else 0
-    
+    impulse_factor = peak / mean_abs if mean_abs > 0 else 0
+
     # Shape Factor
-    shape_factor = rms / np.mean(np.abs(signal_data)) if np.mean(np.abs(signal_data)) > 0 else 0
-    
+    shape_factor = rms / mean_abs if mean_abs > 0 else 0
+
     # Clearance Factor
-    clearance_factor = peak / np.mean(np.sqrt(np.abs(signal_data))) ** 2 if np.mean(np.sqrt(np.abs(signal_data))) > 0 else 0
+    clearance_factor = peak / mean_sqrt_abs ** 2 if mean_sqrt_abs > 0 else 0
     
     # Energy
     energy = np.sum(np.square(signal_data))
