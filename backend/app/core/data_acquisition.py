@@ -1,0 +1,109 @@
+import numpy as np
+
+
+def create_sample_data(num_samples=10000, sampling_rate=12000, rpm=1800,
+                       fault_type='all', noise_level=0.5, seed=None):
+    """
+    Generate sample vibration data
+
+    Parameters:
+    -----------
+    num_samples : int
+        Number of samples to generate
+    sampling_rate : float
+        Sampling rate in Hz
+    rpm : float
+        Rotation speed in RPM (must be > 0)
+    fault_type : str
+        Type of fault to generate ('normal', 'outer_fault', 'inner_fault', 'ball_fault', 'cage_fault', or 'all')
+    noise_level : float
+        Level of noise to add (0.0-1.0)
+    seed : int | None
+        RNG seed for reproducibility. None uses fresh entropy.
+
+    Returns:
+    --------
+    dict : Dictionary containing sample data
+    """
+    if rpm <= 0:
+        raise ValueError(f'rpm must be > 0, got {rpm}')
+    if sampling_rate <= 0:
+        raise ValueError(f'sampling_rate must be > 0, got {sampling_rate}')
+    if num_samples <= 0:
+        raise ValueError(f'num_samples must be > 0, got {num_samples}')
+
+    rng = np.random.default_rng(seed)
+
+    t = np.linspace(0, num_samples / sampling_rate, num_samples)
+
+    # Rotation frequency (Hz)
+    rotation_freq = rpm / 60  # Hz
+
+    # Normal signal - rotation frequency component + noise
+    normal_signal = np.sin(2 * np.pi * rotation_freq * t) + noise_level * rng.standard_normal(len(t))
+
+    result = {
+        'time': t,
+        'sampling_rate': sampling_rate,
+        'rpm': rpm
+    }
+
+    # Always include the normal signal so callers can compare against baseline
+    result['normal'] = normal_signal
+    if fault_type == 'normal':
+        return result
+
+    def _impact_step(fault_freq):
+        # Guard against zero/negative step (very low fault_freq vs sampling_rate)
+        return max(1, int(sampling_rate / fault_freq))
+
+    # BPFO fault signal (outer race fault)
+    if fault_type == 'all' or fault_type == 'outer_fault':
+        bpfo_freq = 3.5 * rotation_freq  # Outer race fault frequency (example value)
+        outer_fault_signal = normal_signal + 1.2 * np.sin(2 * np.pi * bpfo_freq * t)
+        # Add intermittent impacts (outer race fault characteristic)
+        impact_idx = np.arange(0, len(t), _impact_step(bpfo_freq))
+        for idx in impact_idx:
+            if idx < len(t):
+                impact_len = 20  # Impact length
+                if idx + impact_len < len(t):
+                    outer_fault_signal[idx:idx + impact_len] += 2.0 * np.exp(-np.arange(impact_len) / 5)
+        result['outer_fault'] = outer_fault_signal
+
+    # BPFI fault signal (inner race fault)
+    if fault_type == 'all' or fault_type == 'inner_fault':
+        bpfi_freq = 5.4 * rotation_freq  # Inner race fault frequency (example value)
+        inner_fault_signal = normal_signal + 1.5 * np.sin(2 * np.pi * bpfi_freq * t)
+        # Inner race fault characteristic (amplitude modulation with rotation)
+        inner_fault_signal *= (1 + 0.3 * np.sin(2 * np.pi * rotation_freq * t))
+        # Add intermittent impacts (inner race fault characteristic)
+        impact_idx = np.arange(0, len(t), _impact_step(bpfi_freq))
+        for idx in impact_idx:
+            if idx < len(t):
+                impact_len = 15  # Impact length
+                if idx + impact_len < len(t):
+                    inner_fault_signal[idx:idx + impact_len] += 2.5 * np.exp(-np.arange(impact_len) / 4)
+        result['inner_fault'] = inner_fault_signal
+
+    # Ball fault signal
+    if fault_type == 'all' or fault_type == 'ball_fault':
+        bsf_freq = 2.7 * rotation_freq  # Ball fault frequency (example value)
+        ball_fault_signal = normal_signal + 1.0 * np.sin(2 * np.pi * bsf_freq * t)
+        # Add irregular impacts (ball fault characteristic)
+        impact_idx = np.arange(0, len(t), _impact_step(bsf_freq))
+        for idx in impact_idx:
+            if idx < len(t) and rng.random() > 0.3:  # 30% chance to skip impact (irregularity)
+                impact_len = 10  # Impact length
+                if idx + impact_len < len(t):
+                    ball_fault_signal[idx:idx + impact_len] += 1.8 * np.exp(-np.arange(impact_len) / 3)
+        result['ball_fault'] = ball_fault_signal
+
+    # Cage fault signal
+    if fault_type == 'all' or fault_type == 'cage_fault':
+        ftf_freq = 0.4 * rotation_freq  # Cage fault frequency (example value)
+        cage_fault_signal = normal_signal + 0.8 * np.sin(2 * np.pi * ftf_freq * t)
+        # Add low frequency modulation (cage fault characteristic)
+        cage_fault_signal += 0.5 * np.sin(2 * np.pi * ftf_freq / 2 * t)
+        result['cage_fault'] = cage_fault_signal
+
+    return result
